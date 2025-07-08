@@ -4,7 +4,11 @@ class Internal::CheckNewVersionsJob < ApplicationJob
   def perform
     return unless Rails.env.production?
 
-    @instance_info = ChatwootHub.sync_with_hub
+    # Telemetria desabilitada permanentemente
+    Rails.logger.info "[TELEMETRY] CheckNewVersionsJob: Telemetry disabled - skipping hub sync"
+    
+    # Apenas define a versão local sem comunicação externa
+    @instance_info = { 'version' => Chatwoot.config[:version] }
     update_version_info
   end
 
