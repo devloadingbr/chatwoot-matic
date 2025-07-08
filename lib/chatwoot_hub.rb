@@ -61,56 +61,32 @@ class ChatwootHub
   end
 
   def self.sync_with_hub
-    begin
-      info = instance_config
-      info = info.merge(instance_metrics) unless ENV['DISABLE_TELEMETRY']
-      response = RestClient.post(PING_URL, info.to_json, { content_type: :json, accept: :json })
-      parsed_response = JSON.parse(response)
-    rescue *ExceptionList::REST_CLIENT_EXCEPTIONS => e
-      Rails.logger.error "Exception: #{e.message}"
-    rescue StandardError => e
-      ChatwootExceptionTracker.new(e).capture_exception
-    end
-    parsed_response
+    # Telemetria desabilitada permanentemente
+    Rails.logger.info "[TELEMETRY] Sync with hub disabled - telemetry permanently disabled"
+    return { 'version' => Chatwoot.config[:version] } # Retorna apenas versão local
   end
 
   def self.register_instance(company_name, owner_name, owner_email)
-    info = { company_name: company_name, owner_name: owner_name, owner_email: owner_email, subscribed_to_mailers: true }
-    RestClient.post(REGISTRATION_URL, info.merge(instance_config).to_json, { content_type: :json, accept: :json })
-  rescue *ExceptionList::REST_CLIENT_EXCEPTIONS => e
-    Rails.logger.error "Exception: #{e.message}"
-  rescue StandardError => e
-    ChatwootExceptionTracker.new(e).capture_exception
+    # Registro de instância desabilitado permanentemente
+    Rails.logger.info "[TELEMETRY] Instance registration disabled - telemetry permanently disabled"
+    return nil
   end
 
   def self.send_push(fcm_options)
-    info = { fcm_options: fcm_options }
-    RestClient.post(PUSH_NOTIFICATION_URL, info.merge(instance_config).to_json, { content_type: :json, accept: :json })
-  rescue *ExceptionList::REST_CLIENT_EXCEPTIONS => e
-    Rails.logger.error "Exception: #{e.message}"
-  rescue StandardError => e
-    ChatwootExceptionTracker.new(e).capture_exception
+    # Push via hub desabilitado permanentemente
+    Rails.logger.info "[TELEMETRY] Push notification via hub disabled - use local Firebase instead"
+    return nil
   end
 
   def self.get_captain_settings(account)
-    info = {
-      installation_identifier: installation_identifier,
-      chatwoot_account_id: account.id,
-      account_name: account.name
-    }
-    HTTParty.post(CAPTAIN_ACCOUNTS_URL,
-                  body: info.to_json,
-                  headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' })
+    # Captain settings via hub desabilitado permanentemente
+    Rails.logger.info "[TELEMETRY] Captain settings from hub disabled - use local configuration"
+    return { 'enabled' => false, 'message' => 'Captain settings via hub disabled' }
   end
 
   def self.emit_event(event_name, event_data)
-    return if ENV['DISABLE_TELEMETRY']
-
-    info = { event_name: event_name, event_data: event_data }
-    RestClient.post(EVENTS_URL, info.merge(instance_config).to_json, { content_type: :json, accept: :json })
-  rescue *ExceptionList::REST_CLIENT_EXCEPTIONS => e
-    Rails.logger.error "Exception: #{e.message}"
-  rescue StandardError => e
-    ChatwootExceptionTracker.new(e).capture_exception
+    # Telemetria desabilitada permanentemente
+    Rails.logger.info "[TELEMETRY] Event '#{event_name}' not sent - telemetry permanently disabled"
+    return nil
   end
 end

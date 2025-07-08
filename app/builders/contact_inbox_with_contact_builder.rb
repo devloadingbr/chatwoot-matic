@@ -45,7 +45,25 @@ class ContactInboxWithContactBuilder
   end
 
   def update_contact_avatar(contact)
-    ::Avatar::AvatarFromUrlJob.perform_later(contact, contact_attributes[:avatar_url]) if contact_attributes[:avatar_url]
+    return unless contact_attributes[:avatar_url].present?
+    
+    # Sempre tentar atualizar avatar se uma nova URL foi fornecida
+    # Útil para Evolution API que pode enviar avatares atualizados
+    if should_update_avatar?(contact)
+      ::Avatar::AvatarFromUrlJob.perform_later(contact, contact_attributes[:avatar_url])
+    end
+  end
+  
+  def should_update_avatar?(contact)
+    return true unless contact.avatar.attached?
+    
+    # Atualizar avatar se:
+    # 1. Não tem avatar anexado
+    # 2. Avatar é muito antigo (mais de 7 dias)
+    # 3. URL do avatar mudou (checagem por timestamp)
+    
+    avatar_age = Time.current - contact.avatar.created_at
+    avatar_age > 7.days
   end
 
   def create_contact

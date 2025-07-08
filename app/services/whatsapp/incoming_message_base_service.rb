@@ -82,12 +82,32 @@ class Whatsapp::IncomingMessageBaseService
     contact_params = @processed_params[:contacts]&.first
     return if contact_params.blank?
 
-    waid = processed_waid(contact_params[:wa_id])
+    # Normalizar dados de contato (útil para Evolution API)
+    normalized_contact = Whatsapp::EvolutionApiService.normalize_contact_data(contact_params)
+    
+    waid = processed_waid(normalized_contact[:wa_id])
+
+    # Extrair informações do perfil incluindo avatar
+    profile = normalized_contact.dig(:profile) || {}
+    
+    contact_attributes = {
+      name: profile[:name],
+      phone_number: "+#{@processed_params[:messages].first[:from]}"
+    }
+    
+    # Adicionar avatar_url se disponível (Evolution API e WhatsApp Cloud enviam)
+    avatar_url = Whatsapp::EvolutionApiService.extract_avatar_url(normalized_contact)
+    if avatar_url.present?
+      contact_attributes[:avatar_url] = avatar_url
+      Rails.logger.info "WhatsApp avatar URL found for contact #{waid}: #{avatar_url}"
+    else
+      Rails.logger.debug "No avatar URL found for contact #{waid}"
+    end
 
     contact_inbox = ::ContactInboxWithContactBuilder.new(
       source_id: waid,
       inbox: inbox,
-      contact_attributes: { name: contact_params.dig(:profile, :name), phone_number: "+#{@processed_params[:messages].first[:from]}" }
+      contact_attributes: contact_attributes
     ).perform
 
     @contact_inbox = contact_inbox
